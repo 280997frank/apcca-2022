@@ -1,0 +1,124 @@
+import { IAgoraUser } from "@/types/agora";
+import { Avatar, Box, Button, Flex, Text } from "@chakra-ui/react";
+import { AiOutlineClose } from "react-icons/ai";
+import { BsFillMicFill } from "react-icons/bs";
+// import { IoIosCheckmarkCircle, IoIosCloseCircle } from "react-icons/io";
+
+interface IParticipantsProps {
+  isOpenParticipant: boolean;
+  onCloseParticipant: () => void;
+  onOpenInvitation: () => void;
+  participants: IAgoraUser[];
+}
+
+const Participants = ({
+  isOpenParticipant,
+  onCloseParticipant,
+  onOpenInvitation,
+  participants,
+}: IParticipantsProps) => {
+  return (
+    <Box
+      my="1rem"
+      borderRadius="lg"
+      height="95%"
+      position="absolute"
+      zIndex={1}
+      top={0}
+      right="10px"
+      backgroundColor="white"
+      overflowX="hidden"
+      transition="0.5s"
+      width={isOpenParticipant ? "350px" : "0"}
+    >
+      <AiOutlineClose
+        onClick={onCloseParticipant}
+        style={{
+          position: "absolute",
+          top: "10px",
+          right: "10px",
+          fontSize: "1.3rem",
+          cursor: "pointer",
+        }}
+      />
+
+      <Box mt="2rem" p="1rem" fontSize="13px">
+        <Flex justifyContent="flex-end" alignItems="center">
+          <Button
+            size="sm"
+            w="30%"
+            fontSize="9px"
+            bgColor="#FFDD00"
+            onClick={onOpenInvitation}
+          >
+            INVITE PEOPLE
+          </Button>
+        </Flex>
+
+        {/* 
+        <Flex justifyContent="space-between" alignItems="center" my="1rem">
+          <Flex alignItems="center">
+            <Image
+              borderRadius="md"
+              src="https://i.picsum.photos/id/120/100/100.jpg?hmac=BC6jd1daOdL8nIMMEl47rE-stUIat9SiLZyJ2aYGPf4"
+              alt="avatar"
+              boxSize="2.5rem"
+              mr="1rem"
+            />
+            <Text>Robert Fox</Text>
+          </Flex>
+          <Flex justifyContent="flex-end" fontSize="28px">
+            <IoIosCheckmarkCircle color="#22DA56" />
+            <IoIosCloseCircle color="#DA2229" />
+          </Flex>
+        </Flex>
+        <Flex justifyContent="space-between" alignItems="center" my="1rem">
+          <Flex alignItems="center">
+            <Image
+              borderRadius="md"
+              src="https://i.picsum.photos/id/120/100/100.jpg?hmac=BC6jd1daOdL8nIMMEl47rE-stUIat9SiLZyJ2aYGPf4"
+              alt="avatar"
+              boxSize="2.5rem"
+              mr="1rem"
+            />
+            <Text>Robert Fox</Text>
+          </Flex>
+          <Flex justifyContent="flex-end" fontSize="28px">
+            <IoIosCheckmarkCircle color="#22DA56" />
+            <IoIosCloseCircle color="#DA2229" />
+          </Flex>
+        </Flex>
+        */}
+      </Box>
+
+      <Box p="1rem" fontSize="13px">
+        <>
+          <Text fontWeight="bold">{participants.length} Participants</Text>
+          {participants.map((participant, index) => {
+            return (
+              <Flex
+                key={index}
+                justifyContent="space-between"
+                alignItems="center"
+                my="1rem"
+              >
+                <Flex alignItems="center">
+                  <Avatar
+                    borderRadius="md"
+                    src={`${participant.picture}`}
+                    boxSize="2.5rem"
+                    mr="1rem"
+                  />
+                  <Text>{participant.username}</Text>
+                </Flex>
+                <BsFillMicFill />
+              </Flex>
+            );
+          })}
+        </>
+      </Box>
+    </Box>
+  );
+};
+
+export default Participants;

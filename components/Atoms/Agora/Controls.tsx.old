@@ -1,0 +1,136 @@
+import { useAgoraClient } from "@/utils/agora";
+import { Box, Flex } from "@chakra-ui/react";
+import {
+  IAgoraRTCClient,
+  ICameraVideoTrack,
+  IMicrophoneAudioTrack,
+} from "agora-rtc-react";
+import { useCallback, useState } from "react";
+import { IoIosCloseCircle } from "react-icons/io";
+import {
+  BsFillCameraVideoFill,
+  BsFillCameraVideoOffFill,
+  BsFillMicFill,
+  BsFillMicMuteFill,
+  BsFillGrid3X2GapFill,
+} from "react-icons/bs";
+
+import { MdGroup } from "react-icons/md";
+
+interface ControlsProps {
+  tracks: [IMicrophoneAudioTrack, ICameraVideoTrack | null] | null;
+  setStart: (state: boolean) => void;
+  setInCall: (state: boolean) => void;
+  channelName: string;
+  onOpenParticipant: () => void;
+}
+
+const Controls = ({
+  tracks,
+  setStart,
+  setInCall,
+  onOpenParticipant,
+}: ControlsProps) => {
+  const client: IAgoraRTCClient = useAgoraClient();
+  const [trackState, setTrackState] = useState({ video: true, audio: true });
+
+  const mute = useCallback(
+    async (type: string) => {
+      if (!tracks) return;
+
+      if (tracks[0] && type === "audio") {
+        await tracks[0].setEnabled(!trackState.audio);
+        setTrackState((ps) => {
+          return { ...ps, audio: !ps.audio };
+        });
+      } else if (tracks[1] && type === "video") {
+        await tracks[1].setEnabled(!trackState.video);
+        setTrackState((ps) => {
+          return { ...ps, video: !ps.video };
+        });
+      }
+    },
+    [tracks, trackState]
+  );
+
+  const leaveChannel = useCallback(async () => {
+    if (tracks && tracks[0]) {
+      tracks[0].removeAllListeners();
+      tracks[0].stop();
+      tracks[0].close();
+      await client.unpublish(tracks[0]);
+    }
+    if (tracks && tracks[1]) {
+      tracks[1].removeAllListeners();
+      tracks[1].stop();
+      tracks[1].close();
+      await client.unpublish(tracks[1]);
+    }
+
+    await client.leave();
+    client.removeAllListeners();
+    setStart(false);
+    setInCall(false);
+  }, [client, tracks, setInCall, setStart]);
+
+  return (
+    <Box position="relative">
+      <Flex flexDir="row" py="2rem" justifyContent="center" gap="2rem">
+        {trackState.audio ? (
+          <BsFillMicFill
+            size="1.3rem"
+            onClick={() => mute("audio")}
+            cursor="pointer"
+          />
+        ) : (
+          <BsFillMicMuteFill
+            size="1.3rem"
+            onClick={() => mute("audio")}
+            cursor="pointer"
+          />
+        )}
+        {trackState.video ? (
+          <BsFillCameraVideoFill
+            size="1.3rem"
+            onClick={() => mute("video")}
+            cursor="pointer"
+          />
+        ) : (
+          <BsFillCameraVideoOffFill
+            size="1.3rem"
+            onClick={() => mute("video")}
+            cursor="pointer"
+          />
+        )}
+        <MdGroup size="1.5rem" onClick={onOpenParticipant} cursor="pointer" />
+      </Flex>
+      <Box
+        borderRadius="full"
+        position="absolute"
+        left="1rem"
+        top="calc(50% - 20px)"
+        onClick={() => console.log("grid layout")}
+        cursor="pointer"
+        backgroundColor="#FFDD00"
+      >
+        <BsFillGrid3X2GapFill
+          style={{ padding: "10px" }}
+          color="black"
+          size="2.6rem"
+        />
+      </Box>
+      <IoIosCloseCircle
+        color="#FF876C"
+        size="2.5rem"
+        style={{
+          position: "absolute",
+          right: "1rem",
+          top: "calc(50% - 20px)",
+        }}
+        cursor="pointer"
+        onClick={leaveChannel}
+      />
+    </Box>
+  );
+};
+export default Controls;

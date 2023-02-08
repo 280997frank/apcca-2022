@@ -1,0 +1,44 @@
+import { IUser } from "@/types/auth";
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+
+interface IAgoraSliceProps {
+  agoraState: "loggedIn" | "loggedOut" | "";
+  isCalling: boolean;
+  rtmToken: string;
+  users: IUser[];
+}
+
+const initialState: IAgoraSliceProps = {
+  agoraState: "",
+  rtmToken: "",
+  isCalling: false,
+  users: [],
+};
+
+const agora = createSlice({
+  name: "agora",
+  initialState,
+  reducers: {
+    setLoggedIn: (
+      state,
+      action: PayloadAction<{ agoraState: "loggedIn" | "loggedOut" | "" }>
+    ) => {
+      state.agoraState = action.payload.agoraState;
+    },
+    setIsCalling: (state, action: PayloadAction<{ isCalling: boolean }>) => {
+      state.isCalling = action.payload.isCalling;
+    },
+    setRTMToken: (state, action: PayloadAction<{ rtmToken: string }>) => {
+      state.rtmToken = action.payload.rtmToken;
+    },
+    setUsers: (state, action: PayloadAction<{ users: IUser[] }>) => {
+      state.users = action.payload.users;
+    },
+  },
+});
+
+export const actions = {
+  ...agora.actions,
+};
+
+export const reducer = agora.reducer;

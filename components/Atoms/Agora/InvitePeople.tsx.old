@@ -1,0 +1,182 @@
+import { useAgoraRTCInviteVideoCall } from "@/hooks/agora";
+import { RootState } from "@/states/store";
+import { IUser } from "@/types/auth";
+import {
+  Avatar,
+  Box,
+  Button,
+  Flex,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  Text,
+} from "@chakra-ui/react";
+import { ChangeEvent, useCallback, useEffect, useState } from "react";
+import { AiOutlineClose, AiOutlineLeft } from "react-icons/ai";
+import { AiOutlineSearch } from "react-icons/ai";
+import { shallowEqual, useSelector } from "react-redux";
+
+interface IInviteProps {
+  isOpenInvitation: boolean;
+  onCloseInvitation: () => void;
+  channelName: string;
+}
+
+interface IInviteButtonProps {
+  channelName: string;
+  id: string;
+}
+
+const InviteButton = ({ id, channelName }: IInviteButtonProps) => {
+  const { inviteVideoCall, loading } = useAgoraRTCInviteVideoCall();
+
+  const handleInviteUser = useCallback(
+    (id: string) => {
+      inviteVideoCall({
+        variables: {
+          videoCallInviteInput: {
+            recipientId: id,
+            videoCallId: channelName,
+          },
+        },
+      });
+    },
+    [inviteVideoCall, channelName]
+  );
+
+  return (
+    <Button
+      size="sm"
+      fontSize="9px"
+      bgColor="#FFDD00"
+      onClick={() => handleInviteUser(id)}
+      px="2rem"
+      isLoading={loading}
+    >
+      INVITE
+    </Button>
+  );
+};
+
+const InvitePeople = ({
+  isOpenInvitation,
+  onCloseInvitation,
+  channelName,
+}: IInviteProps) => {
+  const [value, setValue] = useState("");
+  const [users, setUsers] = useState<IUser[]>([]);
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) =>
+    setValue(event.target.value);
+
+  const { attandees } = useSelector(
+    (state: RootState) => ({
+      attandees: state.agora.users,
+    }),
+    shallowEqual
+  );
+
+  useEffect(() => {
+    if (isOpenInvitation && attandees && value === "") {
+      setUsers(attandees);
+    }
+  }, [isOpenInvitation, attandees, value]);
+
+  useEffect(() => {
+    if (value && attandees) {
+      const filterItems = (needle: string, heystack: IUser[]) => {
+        let query = needle.toLowerCase();
+        return heystack.filter(
+          (item) =>
+            `${item.firstName} ${item.lastName}`.toLowerCase().indexOf(query) >=
+            0
+        );
+      };
+      setUsers(filterItems(value, attandees));
+    }
+  }, [value, attandees]);
+
+  return (
+    <Box
+      my="1rem"
+      borderRadius="lg"
+      height="95%"
+      position="absolute"
+      zIndex={1}
+      top={0}
+      right="10px"
+      backgroundColor="white"
+      overflowX="hidden"
+      transition="0.5s"
+      width={isOpenInvitation ? "350px" : "0"}
+    >
+      <AiOutlineClose
+        onClick={onCloseInvitation}
+        style={{
+          position: "absolute",
+          top: "10px",
+          right: "10px",
+          fontSize: "1.3rem",
+          cursor: "pointer",
+        }}
+      />
+
+      <Box mt="2rem" p="1rem" fontSize="13px">
+        <>
+          <Flex
+            onClick={onCloseInvitation}
+            alignItems="center"
+            width="fit-content"
+            py="0.5rem"
+            pr="0.5rem"
+            cursor="pointer"
+          >
+            <AiOutlineLeft />
+            &nbsp;&nbsp;Back
+          </Flex>
+
+          <InputGroup>
+            <InputLeftElement pointerEvents="none">
+              <AiOutlineSearch color="#FFDD00" />
+            </InputLeftElement>
+            <Input
+              placeholder="Search"
+              fontSize="12px"
+              value={value}
+              onChange={handleChange}
+            />
+          </InputGroup>
+
+          {users.map((user, index) => {
+            return (
+              <Flex
+                key={index}
+                justifyContent="space-between"
+                alignItems="center"
+                my="1rem"
+              >
+                <Flex alignItems="center">
+                  <Avatar
+                    borderRadius="md"
+                    src={user.profilePicture ? `${user.profilePicture}` : ``}
+                    boxSize="2.5rem"
+                    mr="1rem"
+                  />
+                  <Text>{`${user.firstName} ${user.lastName}`}</Text>
+                </Flex>
+                <Flex justifyContent="flex-end" fontSize="28px">
+                  <InviteButton
+                    key={index}
+                    channelName={channelName}
+                    id={user.id}
+                  />
+                </Flex>
+              </Flex>
+            );
+          })}
+        </>
+      </Box>
+    </Box>
+  );
+};
+
+export default InvitePeople;

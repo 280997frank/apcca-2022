@@ -1,0 +1,235 @@
+import { IAgoraUser } from "@/types/agora";
+import {
+  AspectRatio,
+  Box,
+  Center,
+  Flex,
+  Grid,
+  Text,
+  useDisclosure,
+} from "@chakra-ui/react";
+import {
+  AgoraVideoPlayer,
+  ICameraVideoTrack,
+  IMicrophoneAudioTrack,
+} from "agora-rtc-react";
+import { IoMicCircleSharp, IoMicOffCircleSharp } from "react-icons/all";
+import InvitePeople from "./InvitePeople";
+import Participants from "./Participants";
+
+interface VideoProps {
+  tracks: [IMicrophoneAudioTrack, ICameraVideoTrack | null] | null;
+  participants: IAgoraUser[];
+  isOpenParticipant: boolean;
+  onCloseParticipant: () => void;
+  channelName: string;
+}
+
+const Video = ({
+  tracks,
+  participants,
+  isOpenParticipant,
+  onCloseParticipant,
+  channelName,
+}: VideoProps) => {
+  const {
+    isOpen: isOpenInvitation,
+    onOpen: onOpenInvitation,
+    onClose: onCloseInvitation,
+  } = useDisclosure();
+
+  return (
+    <Box w="100%" h="100%" position="relative">
+      {/* REMOTE TRACKS */}
+      <Flex
+        flexDir="row"
+        justifyContent="center"
+        h="100%"
+        w="100%"
+        background="linear-gradient(43.56deg, #363636 -92.71%, #535353 171.64%);"
+      >
+        {/* MULTIPLE USERS */}
+        {participants.length > 1 && (
+          <Grid
+            templateColumns={`repeat(${
+              participants.length < 5 ? participants.length : 4
+            }, 1fr)`}
+            templateRows={
+              participants.length > 4 ? "repeat(2, 1fr)" : "repeat(1, 1fr)"
+            }
+            gap={6}
+            w="100%"
+            h="100%"
+            p="1rem"
+          >
+            {participants.map((user, index) => {
+              if (user.videoTrack) {
+                return (
+                  <AspectRatio key={index} ratio={16 / 9} position="relative">
+                    <Box>
+                      <Flex
+                        position="absolute"
+                        left="10px"
+                        bottom="10px"
+                        zIndex="10"
+                        alignItems="center"
+                        justifyContent="center"
+                        gap="0.5rem"
+                      >
+                        {user.audioTrack && user.hasAudio ? (
+                          <IoMicCircleSharp color="white" size="1.2rem" />
+                        ) : (
+                          <IoMicOffCircleSharp color="white" size="1.2rem" />
+                        )}
+                        <Text fontSize="lg" color="white" fontWeight="bold">
+                          {user.username}
+                        </Text>
+                      </Flex>
+                      <AgoraVideoPlayer
+                        videoTrack={user.videoTrack}
+                        key={user.uid}
+                        style={{
+                          height: "100%",
+                          width: "100%",
+                          borderRadius: "0.5rem",
+                        }}
+                      />
+                    </Box>
+                  </AspectRatio>
+                );
+              } else {
+                return (
+                  <AspectRatio key={index} ratio={16 / 9} position="relative">
+                    <Box>
+                      <Flex
+                        position="absolute"
+                        left="10px"
+                        bottom="10px"
+                        zIndex="10"
+                        alignItems="center"
+                        justifyContent="center"
+                        gap="0.5rem"
+                      >
+                        {user.audioTrack && user.hasAudio ? (
+                          <IoMicCircleSharp color="white" size="1.2rem" />
+                        ) : (
+                          <IoMicOffCircleSharp color="white" size="1.2rem" />
+                        )}
+                        <Text fontSize="lg" color="white" fontWeight="bold">
+                          {user.username}
+                        </Text>
+                      </Flex>
+                      <Center>
+                        <Text
+                          color="white"
+                          fontWeight="bold"
+                          fontSize="xl"
+                        >{`Camera not available`}</Text>
+                      </Center>
+                    </Box>
+                  </AspectRatio>
+                );
+              }
+            })}
+          </Grid>
+        )}
+
+        {/* SINGLE REMOTE USER */}
+        {participants.length === 1 &&
+          participants[0] &&
+          participants[0].videoTrack && (
+            <>
+              <Flex
+                position="absolute"
+                left="10px"
+                bottom="10px"
+                zIndex="10"
+                alignItems="center"
+                justifyContent="center"
+                gap="0.5rem"
+              >
+                {participants[0].audioTrack && participants[0].hasAudio ? (
+                  <IoMicCircleSharp color="white" size="1.2rem" />
+                ) : (
+                  <IoMicOffCircleSharp color="white" size="1.2rem" />
+                )}
+                <Text fontSize="lg" color="white" fontWeight="bold">
+                  {participants[0].username}
+                </Text>
+              </Flex>
+              <AgoraVideoPlayer
+                videoTrack={participants[0].videoTrack}
+                key={participants[0].uid}
+                style={{ height: "100%", width: "100%", borderRadius: "1rem" }}
+              />
+            </>
+          )}
+
+        {participants.length === 0 && (
+          <Center>
+            <Text
+              color="white"
+              fontWeight="bold"
+              fontSize="xl"
+            >{`Waiting for someone to join the call`}</Text>
+          </Center>
+        )}
+      </Flex>
+
+      {/* LOCAL TRACKS */}
+      {tracks && tracks[1] && (
+        <Box>
+          <AspectRatio
+            ratio={16 / 9}
+            borderRadius="1rem"
+            position="absolute"
+            right="10px"
+            bottom="10px"
+            w={{ base: "200px", lg: "250px", "2xl": "300px" }}
+          >
+            <AgoraVideoPlayer
+              videoTrack={tracks[1]}
+              style={{ height: "100%", width: "100%", borderRadius: "1rem" }}
+            />
+          </AspectRatio>
+        </Box>
+      )}
+
+      {tracks && !tracks[1] && (
+        <Box
+          position="absolute"
+          right="10px"
+          bottom="10px"
+          w="xs"
+          borderRadius="1rem"
+          backgroundColor="grey"
+        >
+          <AspectRatio ratio={16 / 9} borderRadius="1rem">
+            <Center>
+              <Text
+                color="white"
+                fontWeight="bold"
+                fontSize="xl"
+              >{`Camera not available`}</Text>
+            </Center>
+          </AspectRatio>
+        </Box>
+      )}
+
+      <Participants
+        isOpenParticipant={isOpenParticipant}
+        onCloseParticipant={onCloseParticipant}
+        onOpenInvitation={onOpenInvitation}
+        participants={participants}
+      />
+
+      <InvitePeople
+        isOpenInvitation={isOpenInvitation}
+        onCloseInvitation={onCloseInvitation}
+        channelName={channelName}
+      />
+    </Box>
+  );
+};
+
+export default Video;

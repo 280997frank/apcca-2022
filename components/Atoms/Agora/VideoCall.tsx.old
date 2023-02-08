@@ -1,0 +1,201 @@
+import { IAgoraUser } from "@/types/agora";
+import {
+  AGORA_APP_ID,
+  useAgoraClient,
+  useCameraAndMicrophoneTracks,
+  // useMicrophoneTracks,
+} from "@/utils/agora";
+import { Flex, useDisclosure, useToast } from "@chakra-ui/react";
+import { useEffect, useState } from "react";
+import Controls from "./Controls";
+import Video from "./Video";
+
+interface VideoCallProps {
+  setInCall: (state: boolean) => void;
+  channelName: string;
+  name: string;
+  uid: string;
+  token: string;
+}
+
+const VideoCall = ({
+  setInCall,
+  channelName,
+  name,
+  uid,
+  token,
+}: VideoCallProps) => {
+  const toast = useToast();
+  const [users, setUsers] = useState<IAgoraUser[]>([]);
+  const [start, setStart] = useState(false);
+  const [initialize, setInitialize] = useState(false);
+  const [rtmInitialize, setRTMInitialized] = useState(false);
+  const client = useAgoraClient();
+  const {
+    isOpen: isOpenParticipant,
+    onToggle: onOpenParticipant,
+    onClose: onCloseParticipant,
+  } = useDisclosure();
+
+  const {
+    error: cameraError,
+    ready: cameraReady,
+    tracks: cameraTrack,
+  } = useCameraAndMicrophoneTracks();
+
+  // const {
+  //   error: micError,
+  //   ready: micReady,
+  //   track: micTrack,
+  // } = useMicrophoneTracks();
+
+  useEffect(() => {
+    if (cameraError && cameraError.code === "DEVICE_NOT_FOUND") {
+      toast({
+        title: "Camera not available",
+        status: "warning",
+      });
+    }
+  }, [cameraError, toast]);
+
+  // useEffect(() => {
+  //   if (micError && micError.code === "DEVICE_NOT_FOUND") {
+  //     toast({
+  //       title: "Microphone not available",
+  //       status: "warning",
+  //     });
+  //   }
+  // }, [micError, toast]);
+
+  useEffect(() => {
+    const init = async () => {
+      // published
+      client.on("user-published", async (user, mediaType) => {
+        await client.subscribe(user, mediaType);
+
+        const rtmClient2 = (
+          await import("@/components/Atoms/Agora/AgoraRTMComponent")
+        ).rtmClient2;
+
+        const attribute = await rtmClient2.getUserAttributes(
+          user.uid as string
+        );
+
+        if (mediaType === "video") {
+          setUsers((prevUsers) => {
+            return [
+              ...prevUsers,
+              {
+                hasAudio: user.hasAudio,
+                hasVideo: user.hasVideo,
+                uid: user.uid,
+                audioTrack: user.audioTrack,
+                videoTrack: user.videoTrack,
+                username: attribute.username,
+                picture: attribute.picture,
+              },
+            ];
+          });
+        }
+        if (mediaType === "audio") {
+          user.audioTrack?.play();
+        }
+      });
+
+      // unpublished
+      client.on("user-unpublished", (user, mediaType) => {
+        if (mediaType === "audio") {
+          if (user.audioTrack) user.audioTrack.stop();
+        }
+
+        if (mediaType === "video") {
+          setUsers((prevUsers) => {
+            return prevUsers.filter((oldUser) => oldUser.uid !== user.uid);
+          });
+        }
+      });
+
+      // left
+      client.on("user-left", (user) => {
+        setUsers((prevUsers) => {
+          return prevUsers.filter((oldUser) => oldUser.uid !== user.uid);
+        });
+      });
+
+      setInitialize(true);
+    };
+
+    try {
+      if (!initialize) init();
+    } catch (error) {
+      console.log({ init: error });
+    }
+  }, [initialize, client, name]);
+
+  useEffect(() => {
+    const initRTM = async () => {
+      await client.join(AGORA_APP_ID, channelName, token, uid);
+      setRTMInitialized(true);
+    };
+
+    if (
+      initialize &&
+      !rtmInitialize &&
+      client.connectionState === "DISCONNECTED"
+    )
+      initRTM();
+  }, [channelName, token, uid, client, initialize, rtmInitialize, name]);
+
+  useEffect(() => {
+    const showModalWithCameraAndMic = async () => {
+      if (cameraTrack) {
+        await client.publish([cameraTrack[0], cameraTrack[1]]);
+        setStart(true);
+      }
+    };
+
+    // const showModalWithOnlyMic = async () => {
+    //   if (micTrack) {
+    //     await client.publish([micTrack]);
+    //     setStart(true);
+    //   }
+    // };
+
+    if (initialize && rtmInitialize && cameraReady) showModalWithCameraAndMic();
+    // if (initialize && rtmInitialize && micReady && !cameraReady)
+    //   showModalWithOnlyMic();
+  }, [
+    cameraTrack,
+    cameraReady,
+    // micTrack,
+    // micReady,
+    client,
+    initialize,
+    rtmInitialize,
+    channelName,
+  ]);
+
+  return (
+    <Flex flexDir="column" height="100%" w="100%">
+      {start && cameraTrack && (
+        <Video
+          tracks={[cameraTrack[0], cameraTrack[1]]}
+          participants={users}
+          isOpenParticipant={isOpenParticipant}
+          onCloseParticipant={onCloseParticipant}
+          channelName={channelName}
+        />
+      )}
+      {cameraReady && cameraTrack && (
+        <Controls
+          tracks={[cameraTrack[0], cameraTrack[1]]}
+          setStart={setStart}
+          setInCall={setInCall}
+          channelName={channelName}
+          onOpenParticipant={onOpenParticipant}
+        />
+      )}
+    </Flex>
+  );
+};
+export default VideoCall;

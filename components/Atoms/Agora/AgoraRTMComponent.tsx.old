@@ -1,0 +1,56 @@
+import { useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { actions as agoraActions } from "@/states/agora/slices";
+import AgoraRTM, { RtmChannel, RtmClient } from "agora-rtm-sdk";
+import { AGORA_APP_ID, AGORA_RTM_CHANNEL } from "@/utils/agora";
+
+interface IAgoraRTMComponentProps {
+  uid: string | undefined;
+  username: string | undefined;
+  picture: string;
+  token: string;
+}
+
+declare global {
+  var RTM_CLIENT: RtmClient | undefined;
+  var RTM_CHANNEL: RtmChannel | undefined;
+}
+
+export const rtmClient2 =
+  global.RTM_CLIENT || AgoraRTM.createInstance(AGORA_APP_ID);
+export const rtmChannel2 =
+  global.RTM_CHANNEL || rtmClient2.createChannel(AGORA_RTM_CHANNEL);
+
+const AgoraRTMComponent = ({
+  uid,
+  username,
+  picture,
+  token,
+}: IAgoraRTMComponentProps) => {
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    const initRtm = async () => {
+      if (uid && username && token !== "" && rtmClient2 && rtmChannel2) {
+        await rtmClient2.login({
+          uid: uid,
+          token,
+        });
+
+        await rtmChannel2.join();
+
+        await rtmClient2.addOrUpdateLocalUserAttributes({
+          uid: uid,
+          username: username,
+          picture: picture,
+        });
+
+        dispatch(agoraActions.setLoggedIn({ agoraState: "loggedIn" }));
+      }
+    };
+    if (uid && username && token !== "") initRtm();
+  }, [uid, username, token, dispatch, picture]);
+
+  return null;
+};
+export default AgoraRTMComponent;

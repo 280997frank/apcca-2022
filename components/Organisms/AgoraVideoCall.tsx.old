@@ -1,0 +1,87 @@
+import { useAgoraTokenGenerator } from "@/hooks/agora";
+import { AgoraRoleType } from "@/types/agora";
+import { Modal, ModalBody, ModalContent, ModalOverlay } from "@chakra-ui/react";
+import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
+
+interface IAgoraVideoCallProps {
+  isOpen: boolean;
+  setOpen: (state: boolean) => void;
+  channelName: string;
+  setChannelName: (channelName: string) => void;
+  id: string;
+  name: string;
+  initial: boolean;
+}
+
+const DynamicVideoCall = dynamic(
+  () => import("@/components/Atoms/Agora/VideoCall"),
+  {
+    ssr: false,
+  }
+);
+
+const AgoraVideoCall = ({
+  isOpen,
+  setOpen,
+  channelName,
+  setChannelName,
+  id,
+  name,
+  initial,
+}: IAgoraVideoCallProps) => {
+  const [token, setToken] = useState("");
+  const { generate } = useAgoraTokenGenerator();
+
+  useEffect(() => {
+    if (isOpen && channelName && id) {
+      generate({
+        variables: {
+          agoraTokenGeneratorInput: {
+            channelName: channelName,
+            roleType: initial
+              ? AgoraRoleType.PUBLISHER
+              : AgoraRoleType.SUBSCRIBER,
+            uid: id,
+          },
+        },
+      }).then((result) => {
+        if (result.data) setToken(result.data.agoraTokenGenerator.token);
+      });
+    }
+  }, [generate, id, channelName, isOpen, initial]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setChannelName("");
+      setToken("");
+    }
+  }, [isOpen, setChannelName]);
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      closeOnOverlayClick={false}
+      onClose={() => undefined}
+      size={{ xl: "4xl", "2xl": "6xl" }}
+      isCentered
+    >
+      <ModalOverlay />
+      <ModalContent h="80%">
+        <ModalBody p="0" position="relative">
+          {token && isOpen && (
+            <DynamicVideoCall
+              setInCall={setOpen}
+              channelName={channelName}
+              name={`${name}`}
+              uid={id}
+              token={token}
+            />
+          )}
+        </ModalBody>
+      </ModalContent>
+    </Modal>
+  );
+};
+
+export default AgoraVideoCall;

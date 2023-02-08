@@ -1,0 +1,21 @@
+import {
+  ClientConfig,
+  createClient,
+  createMicrophoneAndCameraTracks,
+  createMicrophoneAudioTrack,
+} from "agora-rtc-react";
+
+const config: ClientConfig = {
+  mode: "rtc",
+  codec: "vp8",
+};
+
+export const useAgoraClient = createClient(config);
+export const useCameraAndMicrophoneTracks = createMicrophoneAndCameraTracks();
+export const useMicrophoneTracks = createMicrophoneAudioTrack();
+export const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID || "";
+export const AGORA_TOKEN = process.env.NEXT_PUBLIC_AGORA_TOKEN || "";
+export const AGORA_RTM_CHANNEL =
+  process.env.NEXT_PUBLIC_AGORA_RTM_CHANNEL || "";
+export const rtmClient = AgoraRTM.createInstance(AGORA_APP_ID);
+export const rtmChannel = rtmClient.createChannel(AGORA_RTM_CHANNEL);

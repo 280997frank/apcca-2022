@@ -1,0 +1,387 @@
+import {
+  AgoraReadVideoCallInput,
+  AgoraReadVideoCallResponse,
+  AgoraRTCInitiateVideoCallInput,
+  AgoraRTCInitiateVideoCallResponse,
+  AgoraRTCInviteVideoCallInput,
+  AgoraRTCInviteVideoCallResponse,
+  AgoraRTMTokenGeneratorInput,
+  AgoraRTMTokenGeneratorResponse,
+  AgoraTokenGeneratorInput,
+  AgoraTokenGeneratorResponse,
+  INotificationVideoCallResponse,
+  IResSubNotificationStatusUpdate,
+  ResponseGetUser,
+  TPayloadNotifVideoCall,
+  TResPaginationNotifVideoCall,
+} from "@/types/agora";
+import {
+  gql,
+  OnSubscriptionDataOptions,
+  useLazyQuery,
+  useMutation,
+  useSubscription,
+} from "@apollo/client";
+import { useToast } from "@chakra-ui/react";
+import { useEffect, useState } from "react";
+import { shallowEqual, useDispatch } from "react-redux";
+import { actions as agoraActions } from "@/states/agora/slices";
+import { useSelector } from "react-redux";
+import { RootState } from "@/states/store";
+import { IReqPaginationWithID } from "@/types/pagination";
+import { useErrorMessage } from ".";
+import { orderBy } from "lodash";
+
+const MUTATION_GENERATE_TOKEN = gql`
+  mutation agoraTokenGenerator(
+    $agoraTokenGeneratorInput: AgoraTokenGeneratorInput!
+  ) {
+    agoraTokenGenerator(agoraTokenGeneratorInput: $agoraTokenGeneratorInput) {
+      token
+    }
+  }
+`;
+
+export const useAgoraTokenGenerator = () => {
+  const toast = useToast();
+  const [generate, { data, loading }] = useMutation<
+    AgoraTokenGeneratorResponse,
+    AgoraTokenGeneratorInput
+  >(MUTATION_GENERATE_TOKEN, {
+    onError: (error) => {
+      toast({
+        title: error.message,
+        position: "bottom",
+        isClosable: true,
+        status: "error",
+      });
+    },
+  });
+
+  return {
+    generate,
+    data,
+    loading,
+  };
+};
+
+const MUTATION_GENERATE_RTM_TOKEN = gql`
+  mutation agoraRTMTokenGenerator(
+    $agoraRTMTokenGeneratorInput: AgoraRTMTokenGeneratorInput!
+  ) {
+    agoraRTMTokenGenerator(
+      agoraRTMTokenGeneratorInput: $agoraRTMTokenGeneratorInput
+    ) {
+      token
+    }
+  }
+`;
+
+export const useAgoraRTMTokenGenerator = () => {
+  const toast = useToast();
+  const [generateRTM, { data, loading }] = useMutation<
+    AgoraRTMTokenGeneratorResponse,
+    AgoraRTMTokenGeneratorInput
+  >(MUTATION_GENERATE_RTM_TOKEN, {
+    onError: (error) => {
+      toast({
+        title: error.message,
+        position: "bottom",
+        isClosable: true,
+        status: "error",
+      });
+    },
+  });
+
+  return {
+    generateRTM,
+    data,
+    loading,
+  };
+};
+
+const MUTATION_READ_NOTIFICATION = gql`
+  mutation readNotification($readNotificationInput: ReadNotificationInput!) {
+    readNotification(readNotificationInput: $readNotificationInput) {
+      id
+      status
+      userId
+      notificationId
+      notificationType
+    }
+  }
+`;
+
+export const useReadVideoCallNotification = () => {
+  const toast = useToast();
+  const [readVideoCallNotification, { data, loading }] = useMutation<
+    AgoraReadVideoCallResponse,
+    AgoraReadVideoCallInput
+  >(MUTATION_READ_NOTIFICATION, {
+    onError: (error) => {
+      toast({
+        title: error.message,
+        position: "bottom",
+        isClosable: true,
+        status: "error",
+      });
+    },
+  });
+
+  return {
+    readVideoCallNotification,
+    data,
+    loading,
+  };
+};
+
+const MUTATION_INITIATE_CALL = gql`
+  mutation initialVideoCall($videoCallInput: VideocallInput!) {
+    initialVideoCall(videoCallInput: $videoCallInput)
+  }
+`;
+
+export const useAgoraRTCInitiateVideoCall = () => {
+  const toast = useToast();
+  const [initiateVideoCall, { data, loading }] = useMutation<
+    AgoraRTCInitiateVideoCallResponse,
+    AgoraRTCInitiateVideoCallInput
+  >(MUTATION_INITIATE_CALL, {
+    onError: (error) => {
+      toast({
+        title: error.message,
+        position: "bottom",
+        isClosable: true,
+        status: "error",
+      });
+    },
+  });
+
+  return {
+    initiateVideoCall,
+    data,
+    loading,
+  };
+};
+
+const MUTATION_INVITE_CALL = gql`
+  mutation inviteVideoCall($videoCallInviteInput: VideoCallInviteInput!) {
+    inviteVideoCall(videoCallInviteInput: $videoCallInviteInput)
+  }
+`;
+
+export const useAgoraRTCInviteVideoCall = () => {
+  const toast = useToast();
+  const [inviteVideoCall, { data, loading }] = useMutation<
+    AgoraRTCInviteVideoCallResponse,
+    AgoraRTCInviteVideoCallInput
+  >(MUTATION_INVITE_CALL, {
+    onError: (error) => {
+      toast({
+        title: error.message,
+        position: "bottom",
+        isClosable: true,
+        status: "error",
+      });
+    },
+  });
+
+  return {
+    inviteVideoCall,
+    data,
+    loading,
+  };
+};
+
+const NOTIFICATION_UPDATE_SUBSCRIPTION = gql`
+  subscription notificationStatusUpdate {
+    notificationStatusUpdate {
+      notificationType
+      notificationId
+      senderId
+      senderName
+      recipientId
+      videoCallId
+      timestamps
+    }
+  }
+`;
+
+export const useNotificationStatusUpdate = () => {
+  const [newData, setNewData] = useState<IResSubNotificationStatusUpdate>();
+  const { loading, error } = useSubscription(NOTIFICATION_UPDATE_SUBSCRIPTION, {
+    onSubscriptionData: ({
+      subscriptionData: { data },
+    }: OnSubscriptionDataOptions<IResSubNotificationStatusUpdate>) => {
+      setNewData(data);
+    },
+  });
+
+  useErrorMessage(error);
+
+  return {
+    data: newData,
+    loading,
+  };
+};
+
+const QUERY_VIDEO_CALL_NOTIFICATION = gql`
+  query listNotifications($listNotificationInput: ListNotificationInput!) {
+    listNotifications(listNotificationInput: $listNotificationInput) {
+      page
+      totalPage
+      videoCalls {
+        id
+        userId
+        notificationId
+        status
+        notificationType
+        notifications {
+          videoCallId
+          videoCall {
+            senderId
+            senderName
+            recipientId
+            recipientName
+          }
+        }
+        createdAt
+      }
+    }
+  }
+`;
+
+export const useListNotificationVideoCall = (payload: IReqPaginationWithID) => {
+  const { data: statusUpdateData } = useNotificationStatusUpdate();
+  const [listData, setListData] = useState<INotificationVideoCallResponse[]>(
+    []
+  );
+  const [hasMore, setMore] = useState(false);
+
+  const [fetchListNotification, { data, loading, error }] = useLazyQuery<
+    TResPaginationNotifVideoCall,
+    TPayloadNotifVideoCall
+  >(QUERY_VIDEO_CALL_NOTIFICATION, {
+    notifyOnNetworkStatusChange: true,
+    errorPolicy: "all",
+    fetchPolicy: "no-cache",
+    variables: {
+      listNotificationInput: {
+        limit: payload.limit,
+        page: payload.page,
+      },
+    },
+  });
+
+  useErrorMessage(error);
+
+  useEffect(() => {
+    if (data && payload.id) {
+      let notifications: INotificationVideoCallResponse[] = [];
+      data.listNotifications.videoCalls.map((item) => {
+        if (payload.id === item.userId) {
+          notifications.push({
+            notificationId: item.notificationId,
+            recipientId: item.notifications.videoCall.recipientId,
+            senderId: item.notifications.videoCall.senderId,
+            senderName: item.notifications.videoCall.senderName,
+            timestamps: item.createdAt,
+            videoCallId: item.notifications.videoCallId,
+          });
+        }
+      });
+      setListData(notifications);
+      setMore(data.listNotifications.page < data.listNotifications.totalPage);
+    }
+  }, [data, payload.id]);
+
+  useEffect(() => {
+    if (
+      statusUpdateData &&
+      statusUpdateData.notificationStatusUpdate &&
+      payload.id
+    ) {
+      if (
+        statusUpdateData.notificationStatusUpdate.recipientId === payload.id
+      ) {
+        setListData((prev) => {
+          return [
+            ...prev,
+            {
+              notificationId:
+                statusUpdateData.notificationStatusUpdate.notificationId,
+              recipientId:
+                statusUpdateData.notificationStatusUpdate.recipientId,
+              senderId: statusUpdateData.notificationStatusUpdate.senderName,
+              senderName: statusUpdateData.notificationStatusUpdate.senderId,
+              timestamps: new Date(
+                Number(statusUpdateData.notificationStatusUpdate.timestamps)
+              ).toISOString(),
+              videoCallId:
+                statusUpdateData.notificationStatusUpdate.videoCallId,
+            },
+          ];
+        });
+      }
+    }
+  }, [statusUpdateData, payload.id]);
+
+  return {
+    fetchListNotification,
+    data: orderBy(listData, "timestamps", "desc"),
+    setListData,
+    loading,
+    hasMore,
+    error,
+  };
+};
+
+/**
+ * custom hook to generate RTM token
+ *
+ * @param getUser
+ * @returns remoteInvitation, rtmToken
+ */
+const useAgoraRTM = ({ getUser }: ResponseGetUser) => {
+  const [rtmToken, setRTMToken] = useState("");
+  const dispatch = useDispatch();
+
+  const { rtmToken: rtmTokenValue } = useSelector(
+    (state: RootState) => ({
+      rtmToken: state.agora.rtmToken,
+    }),
+    shallowEqual
+  );
+
+  const {
+    generateRTM,
+    data: rtmData,
+    loading: rtmLoading,
+  } = useAgoraRTMTokenGenerator();
+
+  useEffect(() => {
+    if (getUser && getUser.id && !rtmData && rtmTokenValue === "") {
+      generateRTM({
+        variables: {
+          agoraRTMTokenGeneratorInput: {
+            account: getUser.id,
+          },
+        },
+      });
+    }
+  }, [generateRTM, getUser, rtmData, rtmTokenValue]);
+
+  useEffect(() => {
+    if (rtmData && !rtmLoading) {
+      setRTMToken(rtmData.agoraRTMTokenGenerator.token);
+      dispatch(
+        agoraActions.setRTMToken({
+          rtmToken: rtmData.agoraRTMTokenGenerator.token,
+        })
+      );
+    }
+  }, [rtmData, rtmLoading, dispatch]);
+
+  return { rtmToken };
+};
+export default useAgoraRTM;
